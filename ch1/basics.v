@@ -37,14 +37,14 @@ Proof. reflexivity. Qed.
 
 Fixpoint plus (n : nat) (m : nat) : nat :=
   match n with
-    | O => m
-    | S n' => S (plus n' m)
+  | O => m
+  | S n' => S (plus n' m)
   end.
 
 Fixpoint mult (n m : nat) : nat :=
   match n with
-    | O => O
-    | S n' => plus m (mult n' m)
+  | O => O
+  | S n' => plus m (mult n' m)
   end.
 
 (* Exercise 3 *)
