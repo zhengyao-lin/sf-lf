@@ -4,6 +4,23 @@ Definition andb (b1:bool) (b2:bool) : bool :=
   | false => false
   end.
 
+Fixpoint evenb (n:nat) : bool :=
+  match n with
+  | O => true
+  | S O => false
+  | S (S n') => evenb n'
+  end.
+
+Definition oddb (n:nat) : bool := negb (evenb n).
+
+Theorem negb_involutive : forall b : bool,
+  negb (negb b) = b.
+Proof.
+  intros b. destruct b.
+  - reflexivity.
+  - reflexivity.
+Qed.
+
 (* Exercise 1 *)
 Definition nandb (b1:bool) (b2:bool) : bool :=
   match b1, b2 with
