@@ -249,3 +249,10 @@ Example test_bin_incr4 : bin_to_nat Z = 0.
 Proof. reflexivity. Qed.
 Example test_bin_incr5 : bin_to_nat (B (B (B Z))) = 7.
 Proof. reflexivity. Qed.
+
+Theorem nat_equals_self : forall n : nat, n =? n = true.
+Proof.
+  intros n. induction n as [| n' IH].
+    - reflexivity.
+    - simpl. rewrite -> IH. reflexivity.
+Qed.

@@ -15,5 +15,6 @@ clean:
 ifneq ("$(wildcard $(COQ_GENERATED_MAKEFILE))","")
 	$(MAKE) -f $(COQ_GENERATED_MAKEFILE) cleanall
 endif
+	rm -f $(COQ_GENERATED_MAKEFILE) $(COQ_GENERATED_MAKEFILE).conf
 
 FORCE:
