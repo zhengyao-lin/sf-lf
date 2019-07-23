@@ -102,7 +102,6 @@ Example test_nonzeros:
   nonzeros [0;1;0;2;3;0;0] = [1;2;3].
 Proof. reflexivity. Qed.
 
-
 Fixpoint oddmembers (l : natlist) : natlist :=
   match l with
   | nil => nil
@@ -139,7 +138,6 @@ Fixpoint alternate (l1 l2 : natlist) : natlist :=
   | l1, nil => l1
   | a :: t1, b :: t2 => a :: b :: alternate t1 t2
   end.
-
 
 Example test_alternate1:
   alternate [1;2;3] [4;5;6] = [1;4;2;5;3;6].
