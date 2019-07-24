@@ -114,6 +114,12 @@ Proof. reflexivity. Qed.
 Example test_ltb3:             (ltb 4 2) = false.
 Proof. reflexivity. Qed.
 
+Definition gtb (n m : nat) : bool := negb (leb n m).
+Definition geb (n m : nat) : bool := negb (ltb n m).
+
+Notation "x >? y" := (gtb x y) (at level 70) : nat_scope.
+Notation "x >=? y" := (geb x y) (at level 70) : nat_scope.
+
 (* Exercise 5 *)
 Theorem plus_id_exercise : forall n m o : nat,
   n = m -> m = o -> n + m = m + o.
