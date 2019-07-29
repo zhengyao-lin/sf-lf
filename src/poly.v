@@ -14,8 +14,6 @@ Fixpoint repeat {X : Type} (x : X) (count : nat) : list X :=
   | S count' => cons x (repeat x count')
   end.
 
-Check (cons 1 nil).
-
 Fixpoint app {X : Type} (l1 l2 : list X) : (list X) :=
   match l1 with
   | nil => l2
