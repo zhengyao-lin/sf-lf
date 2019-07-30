@@ -659,19 +659,6 @@ Proof.
   - intros H. rewrite H. rewrite <- eqb_refl. reflexivity.
 Qed.
 
-(* not derivable *)
-Definition excluded_middle := forall P: Prop, P \/ ~P.
-
-Theorem restricted_excluded_middle:
-  forall P b,
-  (P <-> b = true) -> P \/ ~P.
-Proof.
-  intros P [] H.
-  - left. rewrite H. reflexivity.
-  - right. rewrite H.
-    intros contra. discriminate contra.
-Qed.
-
 (* Exercise 15 *)
 Lemma andb_true_iff:
   forall b1 b2: bool,
@@ -814,6 +801,19 @@ Proof.
       reflexivity.
 Qed.
 
+(* not derivable *)
+Definition excluded_middle := forall P: Prop, P \/ ~P.
+
+Theorem restricted_excluded_middle:
+  forall P b,
+  (P <-> b = true) -> P \/ ~P.
+Proof.
+  intros P [] H.
+  - left. rewrite H. reflexivity.
+  - right. rewrite H.
+    intros contra. discriminate contra.
+Qed.
+
 (* Exercise 19 *)
 Theorem excluded_middle_irrefutable:
   forall (P: Prop), ~~(P \/ ~P).
@@ -847,4 +847,49 @@ Proof.
 Qed.
 
 (* Exercise 21 *)
-(* later *)
+(* Definition excluded_middle := forall P: Prop, P \/ ~P. *)
+
+Definition peirce := forall P Q: Prop,
+  ((P -> Q) -> P) -> P.
+
+Definition double_negation_elimination := forall P: Prop,
+  ~~P -> P.
+
+Definition de_morgan_not_and_not := forall P Q: Prop,
+  ~(~P /\ ~Q) -> P \/ Q.
+
+Definition implies_to_or := forall P Q: Prop,
+  (P -> Q) -> (~P \/ Q).
+
+Fact dne_eq_lem: double_negation_elimination <-> excluded_middle.
+Proof.
+  split.
+  - intros dne.
+    intros P.
+    apply dne.
+    apply excluded_middle_irrefutable.
+  - intros lem.
+    intros P H.
+    destruct (lem P) as [lem1 | lem2].
+    + apply lem1.
+    + destruct (H lem2).
+Qed.
+
+Fact dmnn_eq_lem: de_morgan_not_and_not <-> excluded_middle.
+Proof.
+  split.
+  - intros dmnn.
+    intros P.
+    apply dmnn.
+    intros [H1 H2].
+    destruct (H2 H1).
+  - intros lem.
+    intros P Q H.
+    destruct (lem P) as [H1 | H2].
+    + left. apply H1.
+    + destruct (lem Q) as [H3 | H4].
+      * right. apply H3.
+      * exfalso. apply H.
+        split. apply H2. apply H4.
+Qed.
+
