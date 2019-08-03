@@ -381,8 +381,6 @@ Proof.
   - exists 2. rewrite <- H. reflexivity.
 Qed.
 
-Check f_equal.
-
 Lemma In_map:
   forall (A B: Type) (f: A -> B) (l: list A) (x: A),
   In x l ->
@@ -602,8 +600,6 @@ Proof.
   - reflexivity.
   - simpl. apply IHk'.
 Qed.
-
-Check evenb_S.
 
 (* Exercise 14 *)
 Theorem evenb_double_conv:
