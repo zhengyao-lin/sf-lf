@@ -485,3 +485,414 @@ Qed.
 (* R 2 [1;0] is provable *)
 (* R 1 [1;2;1;0] is provable *)
 (* R 6 [3;2;1;0] is not provable *)
+
+Inductive reg_exp {T: Type}: Type :=
+  | EmptySet
+  | EmptyStr
+  | Char (t: T)
+  | App (r1 r2: reg_exp)
+  | Union (r1 r2: reg_exp)
+  | Star (r: reg_exp).
+
+Inductive exp_match {T}: list T -> reg_exp -> Prop :=
+  | MEmpty: exp_match [] EmptyStr
+  | MChar x: exp_match [x] (Char x)
+  | MApp s1 re1 s2 re2
+      (H1: exp_match s1 re1)
+      (H2: exp_match s2 re2):
+      exp_match (s1 ++ s2) (App re1 re2)
+  | MUnionL s1 re1 re2
+      (H1 : exp_match s1 re1):
+      exp_match s1 (Union re1 re2)
+  | MUnionR re1 s2 re2
+      (H2: exp_match s2 re2):
+      exp_match s2 (Union re1 re2)
+  | MStar0 re: exp_match [] (Star re)
+  | MStarApp s1 s2 re
+      (H1: exp_match s1 re)
+      (H2: exp_match s2 (Star re)):
+      exp_match (s1 ++ s2) (Star re).
+
+Notation "s =~ re" := (exp_match s re) (at level 80).
+
+Example reg_exp_ex1 : [1] =~ Char 1.
+Proof.
+  apply MChar.
+Qed.
+
+Example reg_exp_ex2 : [1; 2] =~ App (Char 1) (Char 2).
+Proof.
+  apply (MApp [1] _ [2]).
+  - apply MChar.
+  - apply MChar.
+Qed.
+
+Example reg_exp_ex3 : ~([1; 2] =~ Char 1).
+Proof.
+  intros H. inversion H.
+Qed.
+
+Fixpoint reg_exp_of_list {T} (l: list T) :=
+  match l with
+  | [] => EmptyStr
+  | x :: l' => App (Char x) (reg_exp_of_list l')
+  end.
+
+Example reg_exp_ex4 : [1; 2; 3] =~ reg_exp_of_list [1; 2; 3].
+Proof.
+  simpl. apply (MApp [1]).
+  { apply MChar. }
+  apply (MApp [2]).
+  { apply MChar. }
+  apply (MApp [3]).
+  { apply MChar. }
+  apply MEmpty.
+Qed.
+
+Lemma MStar1:
+  forall T s (re: @reg_exp T),
+    s =~ re ->
+    s =~ Star re.
+Proof.
+  intros T s re H.
+  rewrite <- (app_nil_r _ s).
+  apply (MStarApp s []).
+  - apply H.
+  - apply MStar0.
+Qed.
+
+(* Exercie 16 *)
+Lemma empty_is_empty:
+  forall T (s: list T),
+  ~(s =~ EmptySet).
+Proof.
+  intros T s H.
+  inversion H.
+Qed.
+
+Lemma MUnion':
+  forall T (s: list T) (re1 re2: @reg_exp T),
+  s =~ re1 \/ s =~ re2 ->
+  s =~ Union re1 re2.
+Proof.
+  intros T s re1 re2 [match1 | match2].
+  - apply MUnionL. apply match1.
+  - apply MUnionR. apply match2.
+Qed.
+
+Lemma MStar':
+  forall T (ss: list (list T)) (re: reg_exp),
+  (forall s, In s ss -> s =~ re) ->
+  fold app ss [] =~ Star re.
+Proof.
+  intros T ss re H.
+  induction ss as [| a t IH].
+  - simpl. apply MStar0.
+  - simpl.
+    apply MStarApp.
+    + apply H. simpl. left. reflexivity.
+    + apply IH. intros s H'.
+      apply H. simpl. right. apply H'.
+Qed.
+
+(* Exercise 17 *)
+Lemma reg_exp_of_list_spec:
+  forall T (s1 s2: list T),
+  s1 =~ reg_exp_of_list s2 <-> s1 = s2.
+Proof.
+  (* a much nicer version from https://github.com/cz717/bksol/blob/master/sf/IndProp.v
+  intros T s1 s2.
+  generalize dependent s1.
+  induction s2 as [|h t].
+  - (* s2 = [] *)
+    split. 
+    + intros H. simpl in H. inversion H. reflexivity.
+    + intros H. simpl. rewrite H. apply MEmpty.
+  - (* s2 = h::t *)
+    intros s1. split. 
+    + intros H. simpl in H. inversion H. 
+      inversion H3. simpl. 
+      rewrite (IHt s2) in H4. rewrite H4. reflexivity.
+    + intros H. simpl. rewrite H.
+      assert ( A : forall S (x:S) y, [x]++y = x::y).
+      {  intros S x y. simpl. reflexivity.  }
+      rewrite <- A. apply MApp.
+      * apply MChar.
+      * apply IHt. reflexivity.
+  *)
+
+  intros T s1 s2. split.
+  - generalize dependent s2.
+    generalize dependent s1.
+    induction s1 as [| a1 t1 IH1].
+    + destruct s2.
+      * intros. reflexivity.
+      * intros. simpl in H.
+        inversion H.
+        inversion H3.
+        rewrite <- H5 in H1.
+        discriminate H1.
+    + intros s2 H.
+      destruct s2.
+      * simpl in H.
+        inversion H.
+      * simpl in H.
+        inversion H.
+        inversion H3.
+        simpl.
+        rewrite <- H5 in H1.
+        injection H1 as H1.
+        rewrite H6 in H4.
+        rewrite H6.
+        apply IH1 in H4.
+        rewrite H4.
+        reflexivity.
+  - generalize dependent s2.
+    generalize dependent s1.
+    induction s1 as [| a1 t1 IH1].
+    + intros. rewrite <- H. simpl. apply MEmpty.
+    + intros.
+      destruct s2.
+      * discriminate.
+      * simpl.
+        assert (H': a1 :: t1 = [a1] ++ t1).
+        { reflexivity. }
+        rewrite H'.
+        apply MApp.
+        -- injection H as H1 H2.
+           rewrite H1.
+           apply MChar.
+        -- injection H as _ H2.
+           apply IH1. apply H2.
+Qed.
+
+Fixpoint re_chars {T} (re: reg_exp): list T :=
+  match re with
+  | EmptySet => []
+  | EmptyStr => []
+  | Char x => [x]
+  | App re1 re2 => re_chars re1 ++ re_chars re2
+  | Union re1 re2 => re_chars re1 ++ re_chars re2
+  | Star re => re_chars re
+  end.
+
+Theorem in_re_match:
+  forall T (s: list T) (re: reg_exp) (x: T),
+    s =~ re ->
+    In x s ->
+    In x (re_chars re).
+Proof.
+  intros T s re x Hmatch Hin.
+  induction Hmatch
+    as [| x'
+        | s1 re1 s2 re2 Hmatch1 IH1 Hmatch2 IH2
+        | s1 re1 re2 Hmatch IH | re1 s2 re2 Hmatch IH
+        | re | s1 s2 re Hmatch1 IH1 Hmatch2 IH2].
+  (* WORKED IN CLASS *)
+  - (* MEmpty *)
+    apply Hin.
+  - (* MChar *)
+    apply Hin.
+  - simpl. rewrite In_app_iff in *.
+    destruct Hin as [Hin | Hin].
+    + (* In x s1 *)
+      left. apply (IH1 Hin).
+    + (* In x s2 *)
+      right. apply (IH2 Hin).
+  - (* MUnionL *)
+    simpl. rewrite In_app_iff.
+    left. apply (IH Hin).
+  - (* MUnionR *)
+    simpl. rewrite In_app_iff.
+    right. apply (IH Hin).
+  - (* MStar0 *)
+    destruct Hin.
+  - simpl.
+    rewrite In_app_iff in Hin.
+    destruct Hin as [H1 | H2].
+    + apply IH1. apply H1.
+    + apply IH2. apply H2.
+Qed.
+
+(* Exercise 18 *)
+Fixpoint re_not_empty {T: Type} (re: @reg_exp T): bool :=
+  match re with
+  | EmptySet => false
+  | EmptyStr => true
+  | Char t => true
+  | App r1 r2 => re_not_empty r1 && re_not_empty r2
+  | Union r1 r2 => re_not_empty r1 || re_not_empty r2
+  | Star r => true
+  end.
+
+Lemma orb_comm:
+  forall a b, orb a b = orb b a.
+Proof.
+  destruct a.
+  - destruct b.
+    + reflexivity.
+    + reflexivity.
+  - destruct b.
+    + reflexivity.
+    + reflexivity.
+Qed.
+
+Lemma re_not_empty_correct:
+  forall T (re: @reg_exp T),
+  (exists s, s =~ re) <-> re_not_empty re = true.
+Proof.
+  intros T re. split.
+  - intros [s H].
+    induction H as
+      [
+      | x'
+      | s1 re1 s2 re2 Hmatch1 IH1 Hmatch2 IH2
+      | s1 re1 re2 Hmatch IH
+      | re1 s2 re2 Hmatch IH
+      | re
+      | s1 s2 re Hmatch1 IH1 Hmatch2 IH2
+      ].
+    + reflexivity.
+    + reflexivity.
+    + simpl. rewrite IH1, IH2. reflexivity.
+    + simpl. rewrite IH. reflexivity.
+    + simpl. rewrite IH. rewrite orb_comm. reflexivity.
+    + reflexivity.
+    + apply IH2.
+  - intros H.
+    induction re as
+      [
+      |
+      | t
+      | r1 IH1 r2 IH2
+      | r1 IH1 r2 IH2
+      | r IH
+      ].
+    + discriminate.
+    + exists []. apply MEmpty.
+    + exists [t]. apply MChar.
+    + simpl in H. apply andb_true_iff in H.
+      destruct H as [H1 H2].
+      destruct (IH1 H1) as [s1 H1'].
+      destruct (IH2 H2) as [s2 H2'].
+      exists (s1 ++ s2).
+      apply MApp. apply H1'. apply H2'.
+    + simpl in H. apply orb_true_iff in H.
+      destruct H as [H1 | H2].
+      * destruct (IH1 H1) as [s H1'].
+        exists s. apply MUnionL. apply H1'.
+      * destruct (IH2 H2) as [s H2'].
+        exists s. apply MUnionR. apply H2'.
+    + exists []. apply MStar0.
+Qed.
+
+Lemma star_app':
+  forall T (s1 s2: list T) (re re': @reg_exp T),
+    re' = Star re ->
+    s1 =~ re' ->
+    s2 =~ Star re ->
+    s1 ++ s2 =~ Star re.
+Proof.
+  intros T s1' s2' re re' H0 H1 H2.
+  induction H1 as
+    [
+    | x'
+    | s1 re1 s2 re2 Hmatch1 IH1 Hmatch2 IH2
+    | s1 re1 re2 Hmatch IH
+    | re1 s2 re2 Hmatch IH
+    | re''
+    | s1 s2 re'' Hmatch1 IH1 Hmatch2 IH2
+    ].
+  - apply H2.
+  - discriminate.
+  - discriminate.
+  - discriminate.
+  - discriminate.
+  - apply H2.
+  - rewrite <- H0 in *.
+    rewrite <- app_assoc.
+    apply MStarApp.
+    + apply Hmatch1.
+    + apply IH2. reflexivity.
+Qed.
+
+Lemma star_app:
+  forall T (s1 s2: list T) (re: @reg_exp T),
+    s1 =~ Star re ->
+    s2 =~ Star re ->
+    s1 ++ s2 =~ Star re.
+Proof.
+  intros T s1 s2 re H1.
+  remember (Star re) as re'.
+  induction H1 as
+    [
+    | x'
+    | s1 re1 s2' re2 Hmatch1 IH1 Hmatch2 IH2
+    | s1 re1 re2 Hmatch IH
+    | re1 s2' re2 Hmatch IH
+    | re''
+    | s1' s2' re'' Hmatch1 IH1 Hmatch2 IH2
+    ].
+  - discriminate.
+  - discriminate.
+  - discriminate.
+  - discriminate.
+  - discriminate.
+  - intros H. apply H.
+  - intros H.
+    rewrite <- app_assoc.
+    apply MStarApp.
+    + apply Hmatch1.
+    + apply IH2. apply Heqre'. apply H.
+Qed.
+
+(* Exercise 19 *)
+Lemma MStar'':
+  forall T (s: list T) (re: reg_exp),
+    s =~ Star re ->
+    exists (ss: list (list T)),
+      s = fold app ss [] /\ forall s', In s' ss -> s' =~ re.
+Proof.
+  intros T s re H1.
+  remember (Star re) as re'.
+  induction H1 as
+    [
+    |
+    |
+    |
+    |
+    | re2
+    | s1 s2 re2 Hmatch1 IH1 Hmatch2 IH2
+    ].
+  - discriminate.
+  - discriminate.
+  - discriminate.
+  - discriminate.
+  - discriminate.
+  - exists []. split.
+    reflexivity.
+    intros s' H.
+    destruct H.
+  - destruct (IH2 Heqre') as [ss [H1 H2]].
+    exists (s1 :: ss). split.
+    + simpl. rewrite H1. reflexivity.
+    + intros s' [H3 | H3].
+      * rewrite <- H3.
+        injection Heqre' as Heqre'.
+        rewrite <- Heqre'. apply Hmatch1.
+      * apply H2. apply H3.
+Qed.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
