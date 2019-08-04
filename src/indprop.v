@@ -883,16 +883,259 @@ Proof.
       * apply H2. apply H3.
 Qed.
 
+(* Exercise 20 *)
+Fixpoint pumping_constant {T} (re: @reg_exp T): nat :=
+  match re with
+  | EmptySet => 0
+  | EmptyStr => 1
+  | Char _ => 2
+  | App re1 re2 =>
+      pumping_constant re1 + pumping_constant re2
+  | Union re1 re2 =>
+      pumping_constant re1 + pumping_constant re2
+  | Star _ => 1
+  end.
 
+Fixpoint napp {T} (n: nat) (l: list T): list T :=
+  match n with
+  | 0 => []
+  | S n' => l ++ napp n' l
+  end.
 
+Lemma napp_plus:
+  forall T (n m: nat) (l: list T),
+  napp (n + m) l = napp n l ++ napp m l.
+Proof.
+  intros T n m l.
+  induction n as [|n IHn].
+  - reflexivity.
+  - simpl. rewrite IHn, app_assoc. reflexivity.
+Qed.
 
+Lemma le_false_le:
+  forall a b,
+    a <=? b = false ->
+    b <= a.
+Proof.
+  induction a as [| a' IH].
+  - intros. discriminate.
+  - intros.
+    destruct (a' =? b) eqn:E1.
+    + apply eqb_eq in E1.
+      rewrite E1.
+      apply le_S. apply le_n.
+    + apply le_S. apply IH.
+      destruct (a' <=? b) eqn:E2.
+      * apply leb_complete in E2.
+        inversion E2.
+        -- rewrite H1 in E1.
+           rewrite <- eqb_refl in E1.
+           discriminate.
+        -- apply n_le_m__Sn_le_Sm in H0.
+           rewrite H2 in H0.
+           apply leb_correct in H0.
+           rewrite H0 in H.
+           discriminate.
+      * reflexivity.
+Qed.
 
+Lemma le_plus_b:
+  forall a b c,
+    a <= b <-> a + c <= b + c.
+Proof.
+  intros a b c.
+  induction c as [| c' IH].
+  - split.
+    + intros. rewrite (plus_comm a 0), (plus_comm b 0).
+      simpl. apply H.
+    + intros. rewrite (plus_comm a 0), (plus_comm b 0) in H.
+      simpl in H. apply H.
+  - split.
+    + intros.
+      rewrite (plus_comm a (S c')), (plus_comm b (S c')).
+      rewrite <- S_a_plus_b.
+      rewrite <- S_a_plus_b.
+      apply n_le_m__Sn_le_Sm.
+      rewrite (plus_comm c' a), (plus_comm c' b).
+      apply IH.
+      apply H.
+    + intros.
+      rewrite (plus_comm a (S c')), (plus_comm b (S c')) in H.
+      rewrite <- S_a_plus_b in H.
+      rewrite <- S_a_plus_b in H.
+      apply Sn_le_Sm__n_le_m in H.
+      rewrite (plus_comm c' a), (plus_comm c' b) in H.
+      apply IH in H. apply H.
+Qed.
 
+Lemma le_lem:
+  forall a b c d,
+    a + b <= c + d ->
+    a <= c \/ b <= d.
+Proof.
+  intros a b c d H.
+  destruct (a <=? c) eqn:E1.
+  - apply leb_complete in E1.
+    left. apply E1.
+  - apply le_false_le in E1.
+    apply (le_plus_b c a d) in E1.
+    assert (H' := le_trans _ _ _ H E1).
+    rewrite (plus_comm a b), (plus_comm a d) in H'.
+    apply le_plus_b in H'.
+    right. apply H'.
+Qed.
 
+Theorem le_plus_r:
+  forall a b c, a + b <= c -> a <= c.
+Proof.
+  intros a b c H.
+  induction b as [| b' IH].
+  - rewrite plus_comm in H. simpl in H.
+    apply H.
+  - apply IH. rewrite plus_comm in H.
+    rewrite <- S_a_plus_b in H.
+    destruct c.
+    + inversion H.
+    + apply Sn_le_Sm__n_le_m in H.
+      apply le_S.
+      rewrite plus_comm in H.
+      apply H.
+Qed.
 
+Lemma list_length_0:
+  forall X l, @length X l = 0 -> l = [].
+Proof.
+  intros.
+  destruct l.
+  - reflexivity.
+  - discriminate.
+Qed.
 
-
-
-
-
-
+Lemma pumping:
+  forall T (re: @reg_exp T) s,
+    s =~ re ->
+    pumping_constant re <= length s ->
+    exists s1 s2 s3,
+      s = s1 ++ s2 ++ s3 /\
+      s2 <> [] /\
+      forall m, s1 ++ napp m s2 ++ s3 =~ re.
+Proof.
+  intros T re s Hmatch.
+  induction Hmatch as
+    [
+    | x
+    | s1 re1 s2 re2 Hmatch1 IH1 Hmatch2 IH2
+    | s1 re1 re2 Hmatch IH
+    | re1 s2 re2 Hmatch IH
+    | re
+    | s1 s2 re Hmatch1 IH1 Hmatch2 IH2
+    ].
+  - simpl. intros. inversion H.
+  - simpl. intros. inversion H. inversion H2.
+  - simpl. intros.
+    rewrite app_length in H.
+    apply le_lem in H. destruct H as [H | H].
+    + (* s1 is longer than the pumping length of re1 *)
+      destruct (IH1 H) as
+        [s1'x
+          [s1'y
+            [s1'z
+              [IH1'1 [IH1'2 IH1'3]]
+            ]
+          ]
+        ].
+      exists s1'x, s1'y, (s1'z ++ s2).
+      split.
+      { rewrite IH1'1.
+        rewrite app_assoc, app_assoc, app_assoc.
+        reflexivity. }
+      split.
+      { apply IH1'2. }
+      { intros.
+        rewrite app_assoc, app_assoc.
+        apply MApp.
+        - rewrite <- app_assoc. apply IH1'3.
+        - apply Hmatch2. }
+    + (* s2 is longer than the pumping length of re2 *)
+      destruct (IH2 H) as
+        [s2'x
+          [s2'y
+            [s2'z
+              [IH2'1 [IH2'2 IH2'3]]
+            ]
+          ]
+        ].
+      exists (s1 ++ s2'x), s2'y, s2'z.
+      split.
+      { rewrite IH2'1.
+        rewrite app_assoc, app_assoc.
+        reflexivity. }
+      split.
+      { apply IH2'2. }
+      { intros.
+        rewrite <- app_assoc.
+        apply MApp.
+        - apply Hmatch1.
+        - apply IH2'3. }
+  - (* left union, pump in the same way as s1 *)
+    intros. simpl in H.
+    apply le_plus_r in H.
+    destruct (IH H) as
+      [s1'x
+        [s1'y
+          [s1'z
+            [IH1 [IH2 IH3]]
+          ]
+        ]
+      ].
+    exists s1'x, s1'y, s1'z.
+    split.
+    { apply IH1. }
+    split.
+    { apply IH2. }
+    { intros. apply MUnionL. apply IH3. }
+  - (* right union, pump in the same way as s2 *)
+    intros. simpl in H.
+    rewrite plus_comm in H.
+    apply le_plus_r in H.
+    destruct (IH H) as
+      [s2'x
+        [s2'y
+          [s2'z
+            [IH1 [IH2 IH3]]
+          ]
+        ]
+      ].
+    exists s2'x, s2'y, s2'z.
+    split.
+    { apply IH1. }
+    split.
+    { apply IH2. }
+    { intros. apply MUnionR. apply IH3. }
+  - intros. inversion H.
+  - intros. simpl in H. rewrite app_length in H.
+    destruct (length s1) eqn:E.
+    + (* if s1 is empty, pump the same way as s2 *)
+      simpl in H.
+      apply list_length_0 in E.
+      rewrite E. simpl.
+      apply (IH2 H).
+    + (* s1 non empty, pump with s1 *)
+      exists [], s1, s2.
+      split.
+      { reflexivity. }
+      split.
+      { destruct s1. discriminate.
+        intros H'. discriminate. }
+      { simpl. intros m.
+        induction m as [| m' IH].
+        - simpl. apply Hmatch2.
+        - assert (H': S m' = 1 + m').
+          { reflexivity. }
+          rewrite H'.
+          rewrite napp_plus.
+          rewrite <- app_assoc.
+          apply MStarApp.
+          + simpl. rewrite app_nil_r. apply Hmatch1.
+          + apply IH. }
+Qed.
