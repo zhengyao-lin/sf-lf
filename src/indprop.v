@@ -1139,3 +1139,100 @@ Proof.
           + simpl. rewrite app_nil_r. apply Hmatch1.
           + apply IH. }
 Qed.
+
+Theorem filter_not_empty_In:
+  forall n l,
+    filter (fun x => n =? x) l <> [] ->
+    In n l.
+Proof.
+  intros n l.
+  induction l as [| a t IH].
+  - intros. simpl in H.
+    apply H. reflexivity.
+  - simpl. destruct (n =? a) eqn:H.
+    + intros. rewrite eqb_eq in H. rewrite H.
+      left. reflexivity.
+    + intros H'. right. apply IH. apply H'.
+Qed.
+
+Inductive reflect (P: Prop): bool -> Prop :=
+  | ReflectT: P -> reflect P true
+  | ReflectF: ~P -> reflect P false.
+
+(* Inductive reflect: Prop -> bool -> Prop :=
+  | ReflectT: forall P: Prop, P -> reflect P true
+  | ReflectF: forall P: Prop, ~P -> reflect P false. *)
+
+Theorem iff_reflect:
+  forall P b, (P <-> b = true) -> reflect P b.
+Proof.
+  intros.
+  destruct b eqn:E.
+  - apply (ReflectT P). apply H. reflexivity.
+  - apply (ReflectF P). rewrite H. intros HP.
+    discriminate.
+Qed.
+
+Theorem reflect_iff:
+  forall P b, reflect P b -> (P <-> b = true).
+Proof.
+  intros.
+  destruct H as [HP | HNP].
+  - split. intros. reflexivity.
+    intros. apply HP.
+  - split. intros. destruct (HNP H).
+    intros. discriminate.
+Qed.
+
+Lemma eqbP:
+  forall n m, reflect (n = m) (n =? m).
+Proof.
+  intros n m.
+  apply iff_reflect.
+  rewrite eqb_eq.
+  reflexivity.
+Qed.
+
+Theorem filter_not_empty_In':
+  forall n l,
+    filter (fun x => n =? x) l <> [] ->
+    In n l.
+Proof.
+  intros n l.
+  induction l as [| a t IH].
+  - simpl. intros. apply H. reflexivity.
+  - simpl. destruct (eqbP n a) as [HP | HNP].
+    + intros. left. rewrite HP. reflexivity.
+    + intros. right. apply IH. apply H.
+Qed.
+
+(* Exercise 21 *)
+Fixpoint count n l :=
+  match l with
+  | [] => 0
+  | m :: l' => (if n =? m then 1 else 0) + count n l'
+  end.
+
+Theorem eqbP_practice:
+  forall n l, count n l = 0 -> ~(In n l).
+Proof.
+  intros n l.
+  induction l as [| a t IH].
+  - simpl. intros _ f. destruct f.
+  - simpl. destruct (eqbP n a) as [H | H].
+    + intros H'. discriminate.
+    + simpl. intros H1 [H2 | H3].
+      * apply H. rewrite H2. reflexivity.
+      * apply IH. apply H1. apply H3.
+Qed.
+
+
+
+
+
+
+
+
+
+
+
