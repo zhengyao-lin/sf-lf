@@ -1226,7 +1226,125 @@ Proof.
       * apply IH. apply H1. apply H3.
 Qed.
 
+(* Exercise 22 *)
+Inductive nostutter {X: Type}: list X -> Prop :=
+  | nostutter_nil: nostutter []
+  | nostutter_a (a: X): nostutter [a]
+  | nostutter_next (a: X) (b: X) (l: list X):
+      nostutter (b :: l) -> a <> b -> nostutter (a :: b :: l).
 
+Example test_nostutter_1: nostutter [3;1;4;1;5;6].
+Proof.
+  apply nostutter_next.
+  apply nostutter_next.
+  apply nostutter_next.
+  apply nostutter_next.
+  apply nostutter_next.
+  apply nostutter_a.
+  intros. discriminate.
+  intros. discriminate.
+  intros. discriminate.
+  intros. discriminate.
+  intros. discriminate.
+Qed.
+
+Example test_nostutter_2: nostutter (@nil nat).
+Proof. apply nostutter_nil. Qed.
+
+Example test_nostutter_3: nostutter [5].
+Proof. apply nostutter_a. Qed.
+
+Example test_nostutter_4: not (nostutter [3;1;1;4]).
+Proof.
+  intros H.
+  inversion H.
+  inversion H2.
+  apply H9. reflexivity.
+Qed.
+
+(* Exercise 23 *)
+Inductive inorder_merge {X: Type}: list X -> list X -> list X -> Prop :=
+  | inorder_nil: inorder_merge [] [] []
+  | inorder_left a l1 l2 l:
+      inorder_merge l1 l2 l -> inorder_merge (a :: l1) l2 (a :: l)
+  | inorder_right a l1 l2 l:
+      inorder_merge l1 l2 l -> inorder_merge l1 (a :: l2) (a :: l).
+
+Example test_inorder_merge_1: inorder_merge [1] [2] [1; 2].
+Proof.
+  apply inorder_left.
+  apply inorder_right.
+  apply inorder_nil.
+Qed.
+
+Example test_inorder_merge_2: inorder_merge [1] [2; 3] [2; 1; 3].
+Proof.
+  apply inorder_right.
+  apply inorder_left.
+  apply inorder_right.
+  apply inorder_nil.
+Qed.
+
+Example test_inorder_merge_3: ~(inorder_merge [1] [2] [1; 2; 3]).
+Proof.
+  intros H.
+  inversion H.
+  inversion H3.
+  inversion H7.
+Qed.
+
+Theorem filter_correct:
+  forall (X: Type) (l1 l2 l: list X)
+         (test: X -> bool),
+  inorder_merge l1 l2 l ->
+  forallb test l1 = true ->
+  forallb (fun x => negb (test x)) l2 = true ->
+  filter test l = l1.
+Proof.
+  intros X l1 l2 l test.
+  intros H.
+  induction H as
+    [| a l1' l2' l' H' | a l1' l2' l' H' IH].
+  - intros H1 H2. reflexivity.
+  - simpl. intros H1 H2.
+    apply andb_true_iff in H1.
+    destruct H1 as [H3 H4].
+    rewrite H3.
+    rewrite (IHH' H4 H2).
+    reflexivity.
+  - simpl. intros H1 H2.
+    apply andb_true_iff in H2.
+    destruct H2 as [H3 H4].
+    destruct (test a).
+    + discriminate.
+    + apply IH. apply H1. apply H4.
+Qed.
+
+(* Exercise 24 *)
+(* a weaker version on list nat *)
+Theorem filter_correct_2:
+  forall (l' l: list nat)
+         (test: nat -> bool),
+    subseq l' l ->
+    forallb test l' = true ->
+    length l' <= length (filter test l).
+Proof.
+  intros l' l test.
+  intros H.
+  induction H as
+    [| n l1 l2 H' IH | n l1 l2 H' IH].
+  - simpl. intros. apply O_le_n.
+  - simpl. intros H1.
+    destruct (test n).
+    + simpl. apply le_S. apply IH.
+      apply H1.
+    + apply IH. apply H1.
+  - simpl. rewrite andb_true_iff.
+    intros [H1 H2].
+    rewrite H1.
+    apply n_le_m__Sn_le_Sm.
+    apply IH. apply H2.
+Qed.
 
 
 
