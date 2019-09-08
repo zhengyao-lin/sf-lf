@@ -1345,12 +1345,3 @@ Proof.
     apply n_le_m__Sn_le_Sm.
     apply IH. apply H2.
 Qed.
-
-
-
-
-
-
-
-
-
